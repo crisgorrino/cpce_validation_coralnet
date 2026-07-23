@@ -1,0 +1,48 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environment variables and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Local application data
+cpce-poc-*/
+uploads/
+output/
+outputs/
+reports/
+prepared/
+optimized-jpegs/
+pre-annotation-images/
+coralnet-cpce-migration-package.zip
+
+# Logs and databases
+*.log
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE and operating-system files
+.DS_Store
+__MACOSX/
+._*
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
