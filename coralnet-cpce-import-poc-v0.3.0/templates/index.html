@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CoralNet Legacy CPCe Migration Tool</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="hero">
+    <div>
+      <p class="eyebrow">LEGACY CPCe → CORALNET</p>
+      <h1>CoralNet CPCe Migration Validator</h1>
+      <p>Upload a legacy CPCe dataset, approve safe automated repairs, review genuine exceptions, and download files prepared for CoralNet.</p>
+    </div>
+    <a class="secondary button" href="/sample-data.zip">Download sample dataset</a>
+  </header>
+
+  <main>
+    <section class="panel upload-panel">
+      <div class="step-number">1</div>
+      <div class="content">
+        <h2>Upload the legacy dataset</h2>
+        <p>For large datasets, upload one ZIP containing the original images, CPC files, and an optional CoralNet Source labelset CSV.</p>
+        <div class="file-controls">
+          <label class="dropzone primary-dropzone">
+            <span>Choose ZIP or files</span>
+            <input id="fileInput" type="file" multiple accept=".zip,.cpc,.csv,image/*">
+          </label>
+          <label class="dropzone">
+            <span>Choose folder</span>
+            <input id="folderInput" type="file" webkitdirectory multiple>
+          </label>
+        </div>
+        <div id="fileSummary" class="muted">No files selected.</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="step-number">2</div>
+      <div class="content">
+        <h2>Choose validation options</h2>
+        <div class="grid two">
+          <label>
+            <span>Destination CoralNet Source short codes</span>
+            <textarea id="labelCodes" rows="5" placeholder="ACR, POR, CCA&#10;—or include a labelset CSV in the upload"></textarea>
+            <small>Each CPCe code will be checked once at the dataset level.</small>
+          </label>
+          <fieldset>
+            <legend>CPCe label interpretation</legend>
+            <label class="radio"><input type="radio" name="labelMode" value="id_only" checked> Use CPCe ID only</label>
+            <label class="radio"><input type="radio" name="labelMode" value="id_and_notes"> Use ID + Notes</label>
+          </fieldset>
+        </div>
+
+        <div class="feature-box">
+          <label class="checkline">
+            <input id="optimizeJpegs" type="checkbox">
+            <span><strong>CPCe-safe lossless JPEG optimization</strong></span>
+          </label>
+          <p>Uses <code>jpegtran -copy all -optimize</code>. It never resizes, crops, rotates, flips, auto-orients, renames, or performs another lossy JPEG export.</p>
+          <div id="jpegtranStatus" class="muted">Checking for jpegtran…</div>
+          <div class="issue-box warning compact-warning">This may reduce upload size, but it will not reduce pixel count or decoded memory requirements. High-resolution images may still create CoralNet performance issues.</div>
+        </div>
+
+        <details class="advanced-panel">
+          <summary>Optional workflow for images without CPC annotations</summary>
+          <div class="advanced-content">
+            <label class="checkline">
+              <input id="preannotationEnabled" type="checkbox">
+              <span>Normalize orientation and resize unannotated JPEGs into a separate output folder</span>
+            </label>
+            <div class="grid two compact-grid">
+              <label><span>Maximum long edge</span><input id="preannotationMax" type="number" min="256" value="4096"></label>
+              <label><span>JPEG quality</span><input id="preannotationQuality" type="number" min="1" max="100" value="95"></label>
+            </div>
+            <p class="muted">This intentionally changes pixels. It is never applied to an image matched—or potentially matchable—to an existing CPC file.</p>
+          </div>
+        </details>
+
+        <button id="validateButton" class="primary button">Analyze dataset</button>
+        <span id="activity" class="muted"></span>
+      </div>
+    </section>
+
+    <section id="summarySection" class="hidden">
+      <div id="summaryCards" class="summary-grid"></div>
+      <div id="globalIssues"></div>
+
+      <section id="suggestionsPanel" class="panel hidden">
+        <div class="step-number">3</div>
+        <div class="content">
+          <div class="results-heading">
+            <div>
+              <h2>Approve safe automated repairs</h2>
+              <p class="muted">The tool inferred these fixes from unique, deterministic image matches. No image pixels or annotation coordinates are changed.</p>
+            </div>
+            <button id="approveAllButton" class="primary button">Approve all safe fixes</button>
+          </div>
+          <div id="suggestedFixes"></div>
+        </div>
+      </section>
+
+      <section id="mappingPanel" class="panel hidden">
+        <div class="step-number">4</div>
+        <div class="content">
+          <h2>Resolve remaining exceptions</h2>
+          <p>Map each unknown label once across the full dataset, then manually select images only where automatic matching is not safe.</p>
+          <div id="labelMappings"></div>
+          <div id="imageMappings"></div>
+
+          <details class="advanced-panel">
+            <summary>Advanced bulk path rules</summary>
+            <div id="bulkPathFixer" class="advanced-content">
+              <div id="bulkRuleStats" class="rule-stats"></div>
+              <label>
+                <span>Replace path prefixes — one rule per line</span>
+                <textarea id="pathPrefixRules" rows="4" placeholder="C:\Old Projects\Survey => images/Survey"></textarea>
+                <small>Format: <code>OLD PATH =&gt; NEW PATH</code>.</small>
+              </label>
+              <div class="grid three compact-grid">
+                <label><span>Keep final path parts</span><input id="keepLastCount" type="number" min="1" placeholder="1"></label>
+                <label><span>Prepend uploaded folder</span><input id="keepLastPrepend" type="text" placeholder="images"></label>
+                <fieldset class="folder-rule">
+                  <legend>Mirror CPC folders</legend>
+                  <label class="radio"><input id="useCpcFolderRule" type="checkbox"> Use CPC folder structure</label>
+                  <div class="inline-fields"><input id="cpcRoot" type="text" value="cpc"><span>→</span><input id="imageRoot" type="text" value="images"></div>
+                </fieldset>
+              </div>
+            </div>
+          </details>
+
+          <button id="revalidateButton" class="primary button">Apply changes and revalidate</button>
+        </div>
+      </section>
+
+      <section class="panel results-panel">
+        <div class="step-number">5</div>
+        <div class="content full">
+          <div class="results-heading">
+            <div>
+              <h2>Review and download</h2>
+              <p class="muted">The table defaults to files requiring action. Expand a row for the exact scientific diagnostic.</p>
+            </div>
+            <button id="packageButton" class="secondary button">Download migration package</button>
+          </div>
+          <div id="optimizationSummary"></div>
+          <div class="filter-bar" id="filterBar">
+            <button class="filter active" data-filter="needs_action">Needs action</button>
+            <button class="filter" data-filter="ready">Ready</button>
+            <button class="filter" data-filter="auto_fix">Automatic repair</button>
+            <button class="filter" data-filter="needs_review">Needs review</button>
+            <button class="filter" data-filter="cannot_repair">Cannot safely repair</button>
+            <button class="filter" data-filter="all">All files</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Action</th>
+                  <th>CPC file</th>
+                  <th>Expected image</th>
+                  <th>Matched image</th>
+                  <th>Confidence</th>
+                  <th>Points</th>
+                  <th>Scale</th>
+                  <th>Issues</th>
+                </tr>
+              </thead>
+              <tbody id="resultsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <footer>
+    Local POC: originals are never overwritten. Prepared copies and reports are generated in a new migration package.
+  </footer>
+  <script src="/static/app.js"></script>
+</body>
+</html>
